@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registro de asistencia - Bomberos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    body, html {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+    }
+
+    /* Cámara */
+    #video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      filter: brightness(0.9);
+      display: none; /* Oculta hasta login */
+    }
+
+    /* Pantalla Login */
+    #login-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,0,0,0.85);
+      padding: 25px;
+      border-radius: 12px;
+      border: 2px solid #ffcc00;
+      box-shadow: 0 0 20px rgba(255,0,0,0.7);
+      z-index: 5;
+      width: 90%;
+      max-width: 350px;
+      text-align: center;
+    }
+
+    #login-container h2 {
+      margin-bottom: 15px;
+      color: #ffcc00;
+      font-size: 1.5em;
+    }
+
+    #login-container input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    #login-container button {
+      width: 100%;
+      padding: 14px;
+      background: #ffcc00;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #b30000;
+      cursor: pointer;
+    }
+
+    /* Barra inferior */
+    #registro-barra {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 12px;
+      z-index: 3;
+      display: none; /* Oculto hasta login */
+    }
+
+    #registro-barra select {
+      flex: 1;
+      margin-right: 10px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    #registro-barra button {
+      padding: 12px 18px;
+      background: #ffcc00;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #b30000;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Mobile-friendly */
+    @media (max-width: 600px) {
+      #login-container {
+        padding: 20px;
+      }
+      #login-container h2 {
+        font-size: 1.2em;
+      }
+      #registro-barra {
+        flex-direction: column;
+        gap: 10px;
+        padding: 15px;
+      }
+      #registro-barra select, #registro-barra button {
+        width: 100%;
+      }
+    }
+
+    #canvas {
+      display: none;
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Cámara -->
+  <video id="video" autoplay></video>
+
+  <!-- Login -->
+  <div id="login-container">
+    <h2>🚒 Login Bomberos</h2>
+    <input type="text" id="usuario" placeholder="Usuario" required />
+    <input type="password" id="clave" placeholder="Contraseña" required />
+    <button onclick="login()">Ingresar</button>
+  </div>
+
+  <!-- Barra inferior de registro -->
+  <div id="registro-barra">
+    <select id="tipo" required>
+      <option value="">Seleccione</option>
+      <option value="Entrada">Entrada</option>
+      <option value="Salida">Salida</option>
+    </select>
+    <button onclick="tomarFoto()">📸 Registrar</button>
+  </div>
+
+  <!-- Canvas oculto -->
+  <canvas id="canvas"></canvas>
+
+  <!-- Campos ocultos -->
+  <input type="hidden" id="latitud" />
+  <input type="hidden" id="longitud" />
+  <input type="hidden" id="hora" />
+  <input type="hidden" id="fecha" />
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+
+    // Usuarios simulados (objeto local)
+    const usuarios = {
+      "juan": { clave: "1234", nombre: "Juan Pérez" },
+      "ana": { clave: "abcd", nombre: "Ana López" },
+      "carlos": { clave: "0000", nombre: "Carlos Fernández" }
+    };
+
+    let usuarioActivo = "";
+
+    // Ubicación
+    let latitud = '', longitud = '';
+    navigator.geolocation.getCurrentPosition((pos) => {
+      latitud = pos.coords.latitude;
+      longitud = pos.coords.longitude;
+      document.getElementById('latitud').value = latitud;
+      document.getElementById('longitud').value = longitud;
+    });
+
+    // Login simulado
+    function login() {
+      const usuario = document.getElementById("usuario").value.trim().toLowerCase();
+      const clave = document.getElementById("clave").value.trim();
+
+      if (usuarios[usuario] && usuarios[usuario].clave === clave) {
+        usuarioActivo = usuarios[usuario].nombre;
+        localStorage.setItem("usuarioActivo", usuarioActivo);
+
+        document.getElementById("login-container").style.display = "none";
+        document.getElementById("registro-barra").style.display = "flex";
+        video.style.display = "block"; // Mostrar cámara después de login
+
+        // Iniciar cámara solo aquí
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then((stream) => video.srcObject = stream)
+          .catch((err) => alert("No se pudo acceder a la cámara: " + err.message));
+
+        alert("Bienvenido " + usuarioActivo);
+      } else {
+        alert("❌ Usuario o clave incorrectos");
+      }
+    }
+
+    // Tomar foto y registrar
+    function tomarFoto() {
+      const tipo = document.getElementById("tipo").value;
+      const nombre = localStorage.getItem("usuarioActivo");
+
+      if (!tipo) {
+        alert("Seleccione Entrada o Salida.");
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0);
+
+      const timestamp = new Date();
+      const hora = timestamp.toLocaleTimeString("es-BO", { hour12: false });
+      const fecha = timestamp.toISOString().split('T')[0];
+
+      document.getElementById("hora").value = hora;
+      document.getElementById("fecha").value = fecha;
+
+      // Descargar imagen
+      const link = document.createElement('a');
+      link.download = `${nombre}_${tipo}_${fecha}_${hora}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      // Enviar datos al Google Sheet
+      const formData = new FormData();
+      formData.append("nombre", nombre);
+      formData.append("tipo", tipo);
+      formData.append("hora", hora);
+      formData.append("fecha", fecha);
+      formData.append("latitud", latitud);
+      formData.append("longitud", longitud);
+
+      fetch("https://script.google.com/macros/s/AKfycbwiZdSb1bvdnYLSRI_HyopGYPE4tsvmkujnB-hDFhV-P6uZR0mUJl0jQl42i1stD8vmYQ/exec", {
+        method: "POST",
+        body: formData
+      })
+      .then(res => res.ok ? alert("✅ Registro completado.") : alert("❌ Error al enviar datos."))
+      .catch(() => alert("❌ Error de conexión."));
+    }
+  </script>
+</body>
+</html>
